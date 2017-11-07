@@ -67,13 +67,15 @@ From https://compvisionlab.wordpress.com/2013/05/13/image-blending-using-pyramid
 
 '''
 def blend(lapl_pyr_white, lapl_pyr_black, gauss_pyr_mask):
-
   blended_pyr = []
   k= len(gauss_pyr_mask)
   for i in range(0,k):
    p1= gauss_pyr_mask[i]*lapl_pyr_white[i]
    p2=(1 - gauss_pyr_mask[i])*lapl_pyr_black[i]
-   blended_pyr.append(p1+p2)
+   p3 = p1+p2
+   # plt.imshow(p3,cmap='gray')
+   # plt.show()
+   blended_pyr.append(p3)
   return blended_pyr
 '''
 Reconstruct the image based on its laplacian pyramid.
@@ -98,8 +100,9 @@ def collapse(lapl_pyr):
   return output
 
 def split_rgb(image):
-  (blue, green, red) = cv2.split(image)
-  return red, green, blue
+  blue, green, red    = image[:, :, 0], image[:, :, 1], image[:, :, 2]
+  # (blue,green,red)=cv2.split(image)
+  return (red,green,blue)
 
 def combine(r,g,b):
     result = np.zeros(img.shape,dtype=img.dtype)
@@ -107,36 +110,28 @@ def combine(r,g,b):
     colors.append(b)
     colors.append(g)
     colors.append(r)
-    result = cv2.merge(colors,result)
+    result = np.dstack(colors)
     return result
 
 # read image
-img = cv2.imread('apple.jpg')
-img1 = cv2.imread('orange.jpg')
-mask = cv2.imread('mask.jpg')
+img = misc.imread('apple.jpg',flatten=1)
+img1 = misc.imread('orange.jpg',flatten=1)
+mask = misc.imread('mask.jpg',flatten=1)
 img = img.astype(float)
 img1 = img1.astype(float)
 mask = mask.astype(float)/255
 
 # create a  Binomial (5-tap) filter
-def generating_kernel(a):
-  w_1d = np.array([0.25 - a/2.0, 0.25, a, 0.25, 0.25 - a/2.0])
-  return np.outer(w_1d, w_1d)
+kernel = (1.0/256)*np.array([[1, 4,  6,  4,  1],[4, 16, 24, 16, 4],[6, 24, 36, 24, 6],[4, 16, 24, 16, 4],[1, 4,  6,  4,  1]])
 
-kernel = generating_kernel(0.4)
-
-# kernel = (1.0/256)*np.array([[1, 4,  6,  4,  1],[4, 16, 24, 16, 4],[6, 24, 36, 24, 6],[4, 16, 24, 16, 4],[1, 4,  6,  4,  1]])
-
-
-
-# plt.imshow(kernel)
-# plt.show()
+plt.imshow(kernel)
+plt.show()
 '''split RBG'''
 
-(r1,g1,b1) = split_rgb(img)
-(r2,g2,b2) = split_rgb(img1)
-(rm,gm,bm) = split_rgb(mask)
-
+# (r1,g1,b1) = split_rgb(img)
+# (r2,g2,b2) = split_rgb(img1)
+# (rm,gm,bm) = split_rgb(mask)
+#
 # r1 = r1.astype(float)
 # g1 = g1.astype(float)
 # b1 = b1.astype(float)
@@ -150,112 +145,95 @@ kernel = generating_kernel(0.4)
 # bm = bm.astype(float)/255
 
 '''Gassian and Lapacian of apple image'''
-[G_apple_r,L_apple_r] = pyramids(r1)
-[G_apple_g,L_apple_g] = pyramids(g1)
-[G_apple_b,L_apple_b] = pyramids(b1)
+[G_apple,L_apple] = pyramids(img)
+
 # show the laplacian pyramids of apple
-# rows, cols = 512,512
-# composite_image = np.zeros((rows, cols + cols / 2), dtype=np.double)
-# composite_image[:rows, :cols] = L_apple_r[0]
-#
-# i_row = 0
-# for p in L_apple_r[1:]:
-#     n_rows, n_cols = p.shape[:2]
-#     composite_image[i_row:i_row + n_rows, cols:cols + n_cols] = p
-#     i_row += n_rows
-#
-#
-# fig, ax = plt.subplots()
-#
-# ax.imshow(composite_image,cmap='gray')
-# plt.show()
+rows, cols = img.shape
+composite_image = np.zeros((rows, cols + cols / 2), dtype=np.double)
+composite_image[:rows, :cols] = L_apple[0]
+
+i_row = 0
+for p in L_apple[1:]:
+    n_rows, n_cols = p.shape[:2]
+    composite_image[i_row:i_row + n_rows, cols:cols + n_cols] = p
+    i_row += n_rows
+
+
+fig, ax = plt.subplots()
+
+ax.imshow(composite_image,cmap='gray')
+plt.show()
 
 '''Gassian and Lapacian of orange image'''
 
-[G_orange_r,L_orange_r] = pyramids(r2)
-[G_orange_g,L_orange_g] = pyramids(g2)
-[G_orange_b,L_orange_b] = pyramids(b2)
+[G_orange,L_orange] = pyramids(img1)
+
 
 # show the laplacian pyramids of orange
-# rows, cols = 512,512
-# composite_image = np.zeros((rows, cols + cols / 2), dtype=np.double)
-# composite_image[:rows, :cols] = L_orange_r[0]
-#
-# i_row = 0
-# for p in L_orange_r[1:]:
-#     n_rows, n_cols = p.shape[:2]
-#     composite_image[i_row:i_row + n_rows, cols:cols + n_cols] = p
-#     i_row += n_rows
-#
-#
-# fig, ax = plt.subplots()
-#
-# ax.imshow(composite_image,cmap='gray')
-# plt.show()
+rows, cols = img.shape
+composite_image = np.zeros((rows, cols + cols / 2), dtype=np.double)
+composite_image[:rows, :cols] = L_orange[0]
+
+i_row = 0
+for p in L_orange[1:]:
+    n_rows, n_cols = p.shape[:2]
+    composite_image[i_row:i_row + n_rows, cols:cols + n_cols] = p
+    i_row += n_rows
+
+
+fig, ax = plt.subplots()
+
+ax.imshow(composite_image,cmap='gray')
+plt.show()
 
 '''Gassian and Lapacian of mask image'''
 
-[G_mask_r,L_mask_r] = pyramids(rm)
-[G_mask_g,L_mask_g] = pyramids(gm)
-[G_mask_b,L_mask_b] = pyramids(bm)
-
+[G_mask,L_mask] = pyramids(mask)
 # show the laplacian pyramids of mask
 
-# rows, cols = 512,512
-# composite_image = np.zeros((rows, cols + cols / 2), dtype=np.double)
-# composite_image[:rows, :cols] = G_mask_r[0]
-#
-# i_row = 0
-# for p in G_mask_r[1:]:
-#     n_rows, n_cols = p.shape[:2]
-#     composite_image[i_row:i_row + n_rows, cols:cols + n_cols] = p
-#     i_row += n_rows
-#
-#
-# fig, ax = plt.subplots()
-#
-# ax.imshow(composite_image,cmap='gray')
-# plt.show()
+rows, cols = img.shape
+composite_image = np.zeros((rows, cols + cols / 2), dtype=np.double)
+composite_image[:rows, :cols] = G_mask[0]
+
+i_row = 0
+for p in G_mask[1:]:
+    n_rows, n_cols = p.shape[:2]
+    composite_image[i_row:i_row + n_rows, cols:cols + n_cols] = p
+    i_row += n_rows
+
+
+fig, ax = plt.subplots()
+
+ax.imshow(composite_image,cmap='gray')
+plt.show()
 
 # reconstruct the pyramids, here you write a reconstrut function that takes the
 # pyramid and upsampling the each level and add them up.
 
 
-blend_pyramid_r = blend(L_orange_r,L_apple_r,G_mask_r)
-blend_pyramid_g = blend(L_orange_g,L_apple_g,G_mask_g)
-blend_pyramid_b = blend(L_orange_b,L_apple_b,G_mask_b)
-#
-#
-# rows, cols = 512,512
-# composite_image = np.zeros((rows, cols + cols / 2), dtype=np.double)
-# composite_image[:rows, :cols] = blend_pyramid_r[0]
-#
-# i_row = 0
-# for p in blend_pyramid_r[1:]:
-#     n_rows, n_cols = p.shape[:2]
-#     composite_image[i_row:i_row + n_rows, cols:cols + n_cols] = p
-#     i_row += n_rows
-#
-#
-# fig, ax = plt.subplots()
-#
-# ax.imshow(composite_image,cmap='gray')
-# plt.show()
-#
-# # blend_image = collapse(blend(L_orange,L_apple,G_mask))
-#
-#
-blend_image_r = collapse(blend_pyramid_r)
-blend_image_g = collapse(blend_pyramid_g)
-blend_image_b = collapse(blend_pyramid_b)
+blend_pyramid = blend(L_orange,L_apple,G_mask)
 
-blend_image_r = blend_image_r.astype(np.uint8)
-blend_image_g = blend_image_g.astype(np.uint8)
-blend_image_b = blend_image_b.astype(np.uint8)
-#
-#
-blend_image = combine(blend_image_r,blend_image_g,blend_image_b)
-#
-# plt.imshow(blend_image,cmap=plt.cm.gray)
-# plt.show()
+
+rows, cols = img.shape
+composite_image = np.zeros((rows, cols + cols / 2), dtype=np.double)
+composite_image[:rows, :cols] = blend_pyramid[0]
+
+i_row = 0
+for p in blend_pyramid[1:]:
+    n_rows, n_cols = p.shape[:2]
+    composite_image[i_row:i_row + n_rows, cols:cols + n_cols] = p
+    i_row += n_rows
+
+
+fig, ax = plt.subplots()
+
+ax.imshow(composite_image,cmap='gray')
+plt.show()
+
+# blend_image = collapse(blend(L_orange,L_apple,G_mask))
+
+
+blend_image = collapse(blend_pyramid)
+plt.imshow(blend_image,cmap=plt.cm.gray)
+plt.show()
 cv2.imwrite('blended.jpg', blend_image)
